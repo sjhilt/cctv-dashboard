@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCTV Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fas fa-video"></i>
+      <span>CCTV Hub</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-view="dashboard">
+        <i class="fas fa-th-large"></i><span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" data-view="cameras">
+        <i class="fas fa-camera"></i><span>All Cameras</span>
+      </a>
+      <a href="#" class="nav-item" data-view="scanner">
+        <i class="fas fa-network-wired"></i><span>Network Scan</span>
+      </a>
+      <a href="#" class="nav-item" data-view="add-manual">
+        <i class="fas fa-plus-circle"></i><span>Add Camera</span>
+      </a>
+      <a href="#" class="nav-item" data-view="homeassistant">
+        <i class="fas fa-home"></i><span>Home Assistant</span>
+      </a>
+      <a href="#" class="nav-item" data-view="settings">
+        <i class="fas fa-cog"></i><span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="ws-status" id="wsStatus">
+        <span class="dot offline"></span> Disconnected
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main-content">
+    <!-- Top bar -->
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+      <div class="topbar-title" id="viewTitle">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="btn btn-sm btn-ghost" id="pingAllBtn" title="Check all cameras">
+          <i class="fas fa-heartbeat"></i> Ping All
+        </button>
+        <button class="btn btn-sm btn-primary" id="addCameraBtn">
+          <i class="fas fa-plus"></i> Add Camera
+        </button>
+      </div>
+    </header>
+
+    <!-- ══ DASHBOARD VIEW ══ -->
+    <section class="view active" id="view-dashboard">
+      <div class="stats-bar">
+        <div class="stat-card">
+          <i class="fas fa-camera"></i>
+          <div><span class="stat-num" id="statTotal">0</span><span class="stat-label">Total</span></div>
+        </div>
+        <div class="stat-card online">
+          <i class="fas fa-check-circle"></i>
+          <div><span class="stat-num" id="statOnline">0</span><span class="stat-label">Online</span></div>
+        </div>
+        <div class="stat-card offline">
+          <i class="fas fa-times-circle"></i>
+          <div><span class="stat-num" id="statOffline">0</span><span class="stat-label">Offline</span></div>
+        </div>
+        <div class="stat-card unknown">
+          <i class="fas fa-question-circle"></i>
+          <div><span class="stat-num" id="statUnknown">0</span><span class="stat-label">Unknown</span></div>
+        </div>
+      </div>
+
+      <div class="grid-controls">
+        <span class="section-title">Camera Grid</span>
+        <div class="layout-btns">
+          <button class="layout-btn active" data-cols="1"><i class="fas fa-square"></i></button>
+          <button class="layout-btn" data-cols="2"><i class="fas fa-th-large"></i></button>
+          <button class="layout-btn" data-cols="3"><i class="fas fa-th"></i></button>
+          <button class="layout-btn" data-cols="4"><i class="fas fa-border-all"></i></button>
+        </div>
+        <div class="filter-group">
+          <select id="filterBrand" class="filter-select">
+            <option value="">All Brands</option>
+            <option value="Amcrest">Amcrest</option>
+            <option value="Ring">Ring</option>
+            <option value="Reolink">Reolink</option>
+            <option value="Hikvision">Hikvision</option>
+            <option value="Dahua">Dahua</option>
+            <option value="Axis">Axis</option>
+            <option value="Foscam">Foscam</option>
+            <option value="Home Assistant">Home Assistant</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+          <select id="filterStatus" class="filter-select">
+            <option value="">All Status</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="camera-grid cols-2" id="dashboardGrid">
+        <div class="empty-state" id="dashboardEmpty">
+          <i class="fas fa-video-slash"></i>
+          <p>No cameras added yet</p>
+          <button class="btn btn-primary" onclick="switchView('add-manual')">Add Your First Camera</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ ALL CAMERAS VIEW ══ -->
+    <section class="view" id="view-cameras">
+      <div class="section-header">
+        <h2>All Cameras</h2>
+        <input type="text" id="cameraSearch" class="search-input" placeholder="Search cameras..." />
+      </div>
+      <div class="camera-list" id="cameraList"></div>
+    </section>
+
+    <!-- ══ NETWORK SCANNER VIEW ══ -->
+    <section class="view" id="view-scanner">
+      <div class="section-header">
+        <h2><i class="fas fa-radar"></i> Network Scanner</h2>
+      </div>
+      <div class="scanner-card">
+        <div class="scanner-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Subnet (e.g. 192.168.1)</label>
+              <input type="text" id="scanSubnet" class="form-input" placeholder="192.168.1" />
+            </div>
+            <div class="form-group">
+              <label>Start Host</label>
+              <input type="number" id="scanStart" class="form-input" value="1" min="1" max="254" />
+            </div>
+            <div class="form-group">
+              <label>End Host</label>
+              <input type="number" id="scanEnd" class="form-input" value="254" min="1" max="254" />
+            </div>
+          </div>
+          <div class="scanner-actions">
+            <button class="btn btn-primary btn-lg" id="startScanBtn">
+              <i class="fas fa-search"></i> Start Scan
+            </button>
+            <button class="btn btn-danger btn-lg" id="stopScanBtn" style="display:none">
+              <i class="fas fa-stop"></i> Stop Scan
+            </button>
+          </div>
+        </div>
+        <div class="scan-progress-wrap" id="scanProgressWrap" style="display:none">
+          <div class="scan-progress-info">
+            <span id="scanProgressText">Scanning...</span>
+            <span id="scanFoundCount">0 found</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="scanProgressBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="section-subheader">
+        <h3 id="scanResultsTitle">Scan Results</h3>
+        <span class="badge" id="scanResultsBadge">0</span>
+      </div>
+      <div class="scan-results" id="scanResults">
+        <div class="empty-state">
+          <i class="fas fa-search"></i>
+          <p>Run a scan to discover cameras on your network</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ ADD MANUAL VIEW ══ -->
+    <section class="view" id="view-add-manual">
+      <div class="section-header">
+        <h2>Add Camera Manually</h2>
+      </div>
+      <div class="brand-presets">
+        <div class="preset-label">Quick Preset:</div>
+        <button class="preset-btn amcrest" data-brand="Amcrest"><i class="fas fa-video"></i> Amcrest</button>
+        <button class="preset-btn ring" data-brand="Ring"><i class="fas fa-bell"></i> Ring</button>
+        <button class="preset-btn reolink" data-brand="Reolink"><i class="fas fa-camera"></i> Reolink</button>
+        <button class="preset-btn hikvision" data-brand="Hikvision"><i class="fas fa-shield-alt"></i> Hikvision</button>
+        <button class="preset-btn dahua" data-brand="Dahua"><i class="fas fa-eye"></i> Dahua</button>
+        <button class="preset-btn generic" data-brand="Generic"><i class="fas fa-question"></i> Generic</button>
+      </div>
+      <div class="add-camera-form card">
+        <form id="addCameraForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Camera Name *</label>
+              <input type="text" id="fc_name" class="form-input" placeholder="Front Door Camera" required />
+            </div>
+            <div class="form-group">
+              <label>Brand</label>
+              <select id="fc_brand" class="form-input">
+                <option value="Amcrest">Amcrest</option>
+                <option value="Ring">Ring</option>
+                <option value="Reolink">Reolink</option>
+                <option value="Hikvision">Hikvision</option>
+                <option value="Dahua">Dahua</option>
+                <option value="Axis">Axis</option>
+                <option value="Foscam">Foscam</option>
+                <option value="Vivotek">Vivotek</option>
+                <option value="Unknown">Unknown / Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Model</label>
+              <input type="text" id="fc_model" class="form-input" placeholder="IP5M-T1179EW" />
+            </div>
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="fc_location" class="form-input" placeholder="Front Door, Backyard..." />
+            </div>
+            <div class="form-group">
+              <label>IP Address *</label>
+              <input type="text" id="fc_ip" class="form-input" placeholder="192.168.1.100" required />
+            </div>
+            <div class="form-group">
+              <label>HTTP Port</label>
+              <input type="number" id="fc_httpPort" class="form-input" value="80" />
+            </div>
+            <div class="form-group">
+              <label>RTSP Port</label>
+              <input type="number" id="fc_rtspPort" class="form-input" value="554" />
+            </div>
+            <div class="form-group">
+              <label>Camera Type</label>
+              <select id="fc_type" class="form-input">
+                <option>IP Camera</option>
+                <option>Doorbell</option>
+                <option>PTZ Camera</option>
+                <option>Fisheye</option>
+                <option>Bullet</option>
+                <option>Dome</option>
+                <option>Turret</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label>RTSP Stream URL</label>
+              <input type="text" id="fc_streamUrl" class="form-input" placeholder="rtsp://192.168.1.100:554/stream1" />
+              <span class="form-hint">Leave blank to auto-generate based on brand</span>
+            </div>
+            <div class="form-group full-width">
+              <label>Web Interface URL</label>
+              <input type="text" id="fc_webUrl" class="form-input" placeholder="http://192.168.1.100" />
+            </div>
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="fc_username" class="form-input" placeholder="admin" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="fc_password" class="form-input" placeholder="••••••••" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" onclick="resetAddForm()">Reset</button>
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="fas fa-plus"></i> Add Camera
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ══ HOME ASSISTANT VIEW ══ -->
+    <section class="view" id="view-homeassistant">
+      <div class="section-header">
+        <h2><i class="fas fa-home"></i> Home Assistant Cameras</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="toggleHAConfigPanel()">
+            <i class="fas fa-cog"></i> Configure
+          </button>
+          <button class="btn btn-primary btn-sm" id="haFetchBtn" onclick="fetchHACameras()">
+            <i class="fas fa-sync"></i> Fetch Cameras
+          </button>
+        </div>
+      </div>
+
+      <!-- HA Config Panel (collapsible) -->
+      <div class="ha-config-panel card" id="haConfigPanel" style="display:none">
+        <h3 style="margin-top:0"><i class="fas fa-plug"></i> Home Assistant Connection</h3>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Home Assistant URL</label>
+            <input type="text" id="ha_url" class="form-input" placeholder="http://homeassistant.local:8123" />
+            <span class="form-hint">e.g. http://192.168.1.50:8123 or https://myhome.duckdns.org</span>
+          </div>
+          <div class="form-group full-width">
+            <label>Long-Lived Access Token</label>
+            <input type="password" id="ha_token" class="form-input" placeholder="Paste your HA long-lived access token" autocomplete="off" />
+            <span class="form-hint">Create one in HA → Profile → Security → Long-Lived Access Tokens</span>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveHAConfig()">
+            <i class="fas fa-save"></i> Save &amp; Connect
+          </button>
+          <span id="haConfigStatus" style="font-size:0.8rem;color:var(--text2);margin-left:8px"></span>
+        </div>
+      </div>
+
+      <!-- HA Status bar -->
+      <div class="ha-status-bar" id="haStatusBar" style="display:none">
+        <span id="haConnectionStatus"><span class="dot unknown"></span> Not connected</span>
+        <span id="haFoundCount" style="color:var(--text2);font-size:0.85rem"></span>
+      </div>
+
+      <!-- HA Camera Grid -->
+      <div id="haCameraGrid" class="ha-camera-grid">
+        <div class="empty-state" id="haEmpty">
+          <i class="fas fa-home"></i>
+          <p>Configure your Home Assistant URL &amp; token, then click <strong>Fetch Cameras</strong></p>
+          <button class="btn btn-primary" onclick="toggleHAConfigPanel()">
+            <i class="fas fa-cog"></i> Configure HA
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SETTINGS VIEW ══ -->
+    <section class="view" id="view-settings">
+      <div class="section-header"><h2>Settings</h2></div>
+      <div class="settings-grid">
+        <div class="card">
+          <h3><i class="fas fa-palette"></i> Display</h3>
+          <div class="form-group">
+            <label>Dashboard columns</label>
+            <select id="defaultCols" class="form-input" onchange="setDefaultCols(this.value)">
+              <option value="1">1 column</option>
+              <option value="2" selected>2 columns</option>
+              <option value="3">3 columns</option>
+              <option value="4">4 columns</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Theme</label>
+            <select id="themeSelect" class="form-input" onchange="setTheme(this.value)">
+              <option value="dark" selected>Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-bell"></i> Auto Refresh</h3>
+          <div class="form-group">
+            <label>Status ping interval</label>
+            <select id="pingInterval" class="form-input" onchange="setPingInterval(this.value)">
+              <option value="0">Disabled</option>
+              <option value="30">Every 30 seconds</option>
+              <option value="60" selected>Every minute</option>
+              <option value="300">Every 5 minutes</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-home"></i> Home Assistant</h3>
+          <p style="color:var(--text2);font-size:0.85rem;margin-bottom:12px">Manage your HA connection from the Home Assistant page.</p>
+          <button class="btn btn-ghost btn-sm" onclick="switchView('homeassistant')">
+            <i class="fas fa-arrow-right"></i> Go to HA Settings
+          </button>
+        </div>
+        <div class="card danger-zone">
+          <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+          <p>Remove all cameras from the dashboard. This cannot be undone.</p>
+          <button class="btn btn-danger" onclick="clearAllCameras()">
+            <i class="fas fa-trash"></i> Clear All Cameras
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── CAMERA DETAIL MODAL ── -->
+  <div class="modal-overlay" id="cameraModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalCameraName">Camera</h2>
+        <button class="modal-close" id="modalClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ── EDIT CAMERA MODAL ── -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2>Edit Camera</h2>
+        <button class="modal-close" id="editModalClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="editCameraForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Camera Name</label>
+              <input type="text" id="ec_name" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>Brand</label>
+              <select id="ec_brand" class="form-input">
+                <option value="Amcrest">Amcrest</option>
+                <option value="Ring">Ring</option>
+                <option value="Reolink">Reolink</option>
+                <option value="Hikvision">Hikvision</option>
+                <option value="Dahua">Dahua</option>
+                <option value="Axis">Axis</option>
+                <option value="Foscam">Foscam</option>
+                <option value="Vivotek">Vivotek</option>
+                <option value="Home Assistant">Home Assistant</option>
+                <option value="Unknown">Unknown / Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Model</label>
+              <input type="text" id="ec_model" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="ec_location" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>IP Address</label>
+              <input type="text" id="ec_ip" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>HTTP Port</label>
+              <input type="number" id="ec_httpPort" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>RTSP Port</label>
+              <input type="number" id="ec_rtspPort" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>Type</label>
+              <select id="ec_type" class="form-input">
+                <option>IP Camera</option>
+                <option>Doorbell</option>
+                <option>PTZ Camera</option>
+                <option>Fisheye</option>
+                <option>Bullet</option>
+                <option>Dome</option>
+                <option>Turret</option>
+                <option>HA Proxy Camera</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label>RTSP Stream URL</label>
+              <input type="text" id="ec_streamUrl" class="form-input" />
+            </div>
+            <div class="form-group full-width">
+              <label>Web URL</label>
+              <input type="text" id="ec_webUrl" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="ec_username" class="form-input" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="ec_password" class="form-input" autocomplete="new-password" />
+            </div>
+          </div>
+          <input type="hidden" id="ec_id" />
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOAST ── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

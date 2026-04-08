@@ -1,0 +1,13 @@
+# Runtime data - never commit these
+cameras.json
+ha-config.json
+dashboard.log
+dashboard.pid
+
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
